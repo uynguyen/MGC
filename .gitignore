@@ -1,0 +1,16 @@
+# Ignore virtual environments
+env/
+.venv/
+venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Log files
+*.log
+
+# Ignore system files
+.DS_Store
+Thumbs.db

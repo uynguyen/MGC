@@ -1,0 +1,47 @@
+/* homepage.css */
+
+.h_container {
+  padding: 40px;
+  text-align: center;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.center h1 {
+  font-size: 3rem;
+  color: #4a90e2;
+}
+
+.h_container p {
+  font-size: 1.1rem;
+  margin: 20px 0;
+  color: #555;
+}
+
+.how-to {
+  background-color: #e9f1fb;
+  padding: 20px;
+  border-radius: 5px;
+  margin-top: 20px;
+}
+
+.how-to p {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.how-to ol li {
+  margin-bottom: 10px;
+  font-size: 1rem;
+  color: #444;
+}
+
+#audio-upload {
+  margin-top: 10px;
+}
+
+button {
+  margin-top: 20px;
+}

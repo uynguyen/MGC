@@ -1,0 +1,51 @@
+{%extends 'base.html'%} {% block title %} {{ title }} {% endblock %} {% block
+content %}
+<link rel="stylesheet" href="static/css/homepage.css" />
+
+<div class="h_container">
+  <div class="center">
+    <h1>MGC</h1>
+    <br />
+  </div>
+  <p>
+    This is a music genre classifier that uses a Convolutional Neural Network
+    (CNN) to classify music into different genres. The genres include blues,
+    classical, country, disco, hiphop, jazz, metal, pop, reggae, and rock.
+  </p>
+  <br />
+  <div class="how-to">
+    <p>How to use?</p>
+    <br />
+    <ol>
+      <li>Upload the media file (".wav" or ".mp3")</li>
+      <li>Click the "Start" button</li>
+    </ol>
+  </div>
+  <br />
+  <div class="center">
+    <form action="predict" method="POST">
+      <label for="audio-upload">Upload audio file:</label>
+      <input
+        type="file"
+        id="audio-upload"
+        name="myfile"
+        required="required"
+        accept=".wav,.mp3"
+      />
+      <a id="link" download style="display: none">shouldnt be visible</a
+      ><br /><br />
+      <ul id="myList"></ul>
+      <button class="button" formtarget="_self"><span>Start </span></button>
+    </form>
+  </div>
+</div>
+
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/upload_audio.js') }}"
+></script>
+<script
+  type="text/javascript"
+  src="{{ url_for('static', filename='js/display_audio.js') }}"
+></script>
+{% endblock %}

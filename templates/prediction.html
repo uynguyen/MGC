@@ -1,0 +1,25 @@
+<head>
+  <meta charset="UTF-8">
+    <link rel="icon" href="static/img/ai.ico" type="image/gif">
+    <link rel="stylesheet" href="static/css/prediction.css">
+    <meta name="viewport" content="widht=device-width, initial-scale=1.0">
+
+
+</head>
+
+{%extends 'base.html'%}
+
+    {% block title %}
+{{ title }}
+{% endblock %}
+
+{% block content %}
+
+
+</head>
+<table class="center">
+<tr><td>1. {{prediction}}</td><td>%{{probability}}</td></tr>
+<tr><td>2. {{second_prediction}}</td><td>%{{second_probability}}</td></tr>
+<tr><td>3. {{third_prediction}}</td><td>%{{third_probability}}</td></tr>
+</table>
+{% endblock %}
