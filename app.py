@@ -27,5 +27,5 @@ def prediction():
     return render_template('prediction.html', title="Prediction",
                            prediction="",probability="")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
