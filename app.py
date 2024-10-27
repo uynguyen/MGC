@@ -1,3 +1,5 @@
+# NOTE: THIS IS FOR FLASK
+
 # from flask import Flask, render_template, request
 # from pydub import AudioSegment
 
@@ -30,50 +32,123 @@
 # if __name__ == '__main__':
 #     app.run(debug=True)
 
+# NOTE: THIS IS FOR STREAMLIT
+import torchaudio
 import streamlit as st
 import keras
 import numpy as np
 import math
 import os
-import librosa
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchaudio import transforms
 
-class MusicGenreCNN(nn.Module):
-    def __init__(self):
-        super(MusicGenreCNN, self).__init__()
-        # Define layers
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.dropout = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(128 * 16 * 16, 256)  # Assuming input spectrograms of size 128x128
-        self.fc2 = nn.Linear(256, 10)  # Assuming 10 music genres
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+class AudioUtil():
+    @staticmethod
+    def open(audio_file):
+        sig, sr = torchaudio.load(audio_file)
+        return (sig, sr)
+    @staticmethod
+    def rechannel(aud, new_channel):
+        sig, sr = aud
+        if (sig.shape[0] == new_channel):
+            return aud
+        if (new_channel == 1):
+            resig = sig[:1, :]
+        else:
+            resig = torch.cat([sig, sig])
+            
+        return ((resig, sr))
+    @staticmethod
+    def resample(aud, newsr):
+        sig, sr = aud
+        if (sr == newsr):
+            return aud
+        
+        num_channels = sig.shape[0]
+        resig = torchaudio.transforms.Resample(sr, newsr)(sig[:1,:])
+        if (num_channels > 1):
+            retwo = torchaudio.transforms.Resample(sr, newsr)(sig[1:,:])
+            resig = torch.cat([resig, retwo])
+        return ((resig, newsr))
+    @staticmethod
+    def pad_trunc(aud, max_ms):
+        sig, sr = aud
+        num_rows, sig_len = sig.shape
+        max_len = sr//1000 * max_ms
+
+        if (sig_len > max_len):
+            # Truncate the signal to the given length
+            sig = sig[:,:max_len]
+
+        elif (sig_len < max_len):
+            # Length of padding to add at the beginning and end of the signal
+            pad_begin_len = random.randint(0, max_len - sig_len)
+            pad_end_len = max_len - sig_len - pad_begin_len
+
+            # Pad with 0s
+            pad_begin = torch.zeros((num_rows, pad_begin_len))
+            pad_end = torch.zeros((num_rows, pad_end_len))
+            
+            sig = torch.cat((pad_begin, sig, pad_end), 1)
+            
+        return (sig, sr)
+    @staticmethod
+    def spectro_gram(aud, n_mels=64, n_fft=1024, hop_len=None):
+        sig, sr = aud
+        top_db = 80
+        
+        spec = transforms.MelSpectrogram(sr, n_fft=n_fft, hop_length=hop_len, n_mels=n_mels)(sig)
+        spec = transforms.AmplitudeToDB(top_db=top_db)(spec)
+        
+        return (spec)
+
+class SpectrogramCNN(nn.Module):
+    def __init__(self, num_classes=10):
+        super(SpectrogramCNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=(3, 3), padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=(3, 3), padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=(3, 3), padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+        
+        self.pool = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2), padding=0)
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((8, 8))
+        
+        # Fully connected layers
+        self.fc1 = nn.Linear(128 * 8 * 8, 512)
+        self.fc2 = nn.Linear(512, num_classes)
+        self.dropout = nn.Dropout(0.25)
+        self.dropout_fc = nn.Dropout(0.5)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))  # Apply Conv + Relu + Pooling
-        x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
-        x = x.view(-1, 128 * 16 * 16)  # Flatten before feeding to fully connected layers
-        x = F.relu(self.fc1(x))
+        # Convolutional layers with MaxPool
+        x = self.pool(torch.relu(self.bn1(self.conv1(x))))
+        x = self.dropout(x)
+        x = self.pool(torch.relu(self.bn2(self.conv2(x))))
+        x = self.dropout(x)
+        x = self.pool(torch.relu(self.bn3(self.conv3(x))))
+        x = self.dropout(x)
+        
+        # Adaptive pooling to ensure fixed output dimensions
+        x = self.adaptive_pool(x)
+        
+        # Flatten for fully connected layers
+        x = x.view(x.size(0), -1)
+        x = torch.relu(self.fc1(x))
+        x = self.dropout_fc(x)
         x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
+        return x
 
-genre_dict = {0: "disco", 1: "pop", 2: "classical", 3: "metal", 4: "rock", 5: "blues", 6: "hiphop", 7: "reggae",
-                  8: "country", 9: "jazz"}
+genres = ['rock','jazz', 'blues', 'hiphop', 'pop', 'country', 'metal', 'classical', 'reggae', 'disco']
+model = SpectrogramCNN()
 
-model = keras.models.load_model("MusicGenre_CNN_79.73.h5")
-
-
-cnn_model = MusicGenreCNN()
-
-# Load the state_dict from the .pth file
-cnn_model.load_state_dict(torch.load('./model.pth', map_location=torch.device('cpu')))  # Adjust path as necessary
-
-# Set the model to evaluation mode if you’re using it for inference
-cnn_model.eval()
+model.load_state_dict(torch.load('MGC_Model.pth'))
+model.to(device)
+model.eval()
 
 # Title and project details
 st.title("Music Genre Classification")
@@ -87,31 +162,6 @@ st.markdown("""
 
 # Audio file upload
 audio_file = st.file_uploader("Upload an audio file (.wav or .mp3)", type=["wav", "mp3"])
-
-# Function to process audio
-def process_input(audio_path, track_duration):
-    SAMPLE_RATE = 22050
-    NUM_MFCC = 13
-    N_FTT = 2048
-    HOP_LENGTH = 512
-    TRACK_DURATION = track_duration  # measured in seconds
-    SAMPLES_PER_TRACK = SAMPLE_RATE * TRACK_DURATION
-    NUM_SEGMENTS = 10
-
-    samples_per_segment = int(SAMPLES_PER_TRACK / NUM_SEGMENTS)
-    num_mfcc_vectors_per_segment = math.ceil(samples_per_segment / HOP_LENGTH)
-
-    signal, sample_rate = librosa.load(audio_path, sr=SAMPLE_RATE)
-
-    for d in range(NUM_SEGMENTS):
-        # Calculate start and finish sample for current segment
-        start = samples_per_segment * d
-        finish = start + samples_per_segment
-
-        # Extract MFCC features
-        mfcc = librosa.feature.mfcc(y=signal[start:finish], sr=sample_rate, n_mfcc=NUM_MFCC, n_fft=N_FTT, hop_length=HOP_LENGTH)
-        mfcc = mfcc.T
-        return mfcc
 
 # Handle audio file and make predictions
 if audio_file:
@@ -128,52 +178,48 @@ if audio_file:
             f.write(audio_file.read())
         audio_path = "temp.wav"
 
-    # Process audio and make prediction
-    audio_data = process_input(audio_path, 30)
-    X_to_predict = audio_data[np.newaxis, ..., np.newaxis]
-
+    audio, sr = AudioUtil.open(audio_path)
+    audio = AudioUtil.rechannel((audio, sr), 1)
+    audio = AudioUtil.resample(audio, 44100)
+    audio = AudioUtil.pad_trunc(audio, 5500)
+    spec = AudioUtil.spectro_gram(audio)
+    spec = spec.unsqueeze(0)
+    
     # Model prediction
-    
-    # prediction = model.predict(X_to_predict)
-    # pred = np.argmax(prediction)
-    # proba = np.max(prediction) * 100
-
-    # # Calculate second and third most likely genres
-    # sorted_indices = np.argsort(prediction[0])
-    # second_pred = genre_dict[sorted_indices[-2]]
-    # second_prob = prediction[0][sorted_indices[-2]] * 100
-    # third_pred = genre_dict[sorted_indices[-3]]
-    # third_prob = prediction[0][sorted_indices[-3]] * 100
-    
-    
-    # Perform inference
-    with torch.no_grad():  # Disable gradient computation for inference
-        output = cnn_model(X_to_predict)
-        print(output)
+    with torch.no_grad():
+        output = model(spec.to(device))
+        
+        # Get probabilities using softmax
+        probabilities = torch.nn.functional.softmax(output, dim=1)[0]  # Get softmax probabilities for the first item in batch
+        
+        # Get top 3 predictions with probabilities
+        top_probs, top_idxs = torch.topk(probabilities, 3)
+        top_probs = top_probs.cpu().numpy() * 100  # Convert to percentage
+        top_idxs = top_idxs.cpu().numpy()
 
     # Display predictions in columns
     st.subheader("Prediction Results")
 
     # Create columns for each prediction
-    # col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    # with col1:
-    #     st.markdown("### 🏆 Top Prediction")
-    #     st.markdown(f"**Genre**: {genre_dict[int(pred)]}")
-    #     st.markdown(f"**Confidence**: {proba:.2f}%")
-    #     st.progress(int(proba))
+    with col1:
+        st.markdown("### 🏆 Top Prediction")
+        st.markdown(f"**Genre**: {genres[int(top_idxs[0])]}")
+        st.markdown(f"**Confidence**: {top_probs[0]:.2f}%")
+        st.progress(int(top_probs[0]))
 
-    # with col2:
-    #     st.markdown("### 🥈 Second Prediction")
-    #     st.markdown(f"**Genre**: {second_pred}")
-    #     st.markdown(f"**Confidence**: {second_prob:.2f}%")
-    #     st.progress(int(second_prob))
+    with col2:
+        st.markdown("### 🥈 Second Prediction")
+        st.markdown(f"**Genre**: {genres[int(top_idxs[1])]}")
+        st.markdown(f"**Confidence**: {top_probs[1]:.2f}%")
+        st.progress(int(top_probs[1]))
 
-    # with col3:
-    #     st.markdown("### 🥉 Third Prediction")
-    #     st.markdown(f"**Genre**: {third_pred}")
-    #     st.markdown(f"**Confidence**: {third_prob:.2f}%")
-    #     st.progress(int(third_prob))
+    with col3:
+        st.markdown("### 🥉 Third Prediction")
+        st.markdown(f"**Genre**: {genres[int(top_idxs[2])]}")
+        st.markdown(f"**Confidence**: {top_probs[2]:.2f}%")
+        st.progress(int(top_probs[2]))
 
 
     # Clean up temporary files
