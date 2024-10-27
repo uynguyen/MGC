@@ -1,7 +1,6 @@
 # NOTE: THIS IS FOR FLASK
 
 # from flask import Flask, render_template, request
-from pydub import AudioSegment
 
 # app = Flask(__name__)
 
@@ -169,9 +168,19 @@ if audio_file:
     if audio_file.name.endswith(".mp3"):
         with open("temp.mp3", "wb") as f:
             f.write(audio_file.read())
-        audio_segment = AudioSegment.from_mp3("temp.mp3")
-        segment = audio_segment[60 * 1000: 90 * 1000]  # 1 to 1.5 minutes
-        segment.export("temp.wav", format="wav")
+
+        waveform, sample_rate = torchaudio.load("temp.mp3")
+        # Define the segment start and end points (in seconds)
+        start_time = 60  # 1 minute
+        end_time = 90    # 1.5 minutes
+
+        # Calculate sample positions
+        start_sample = int(start_time * sample_rate)
+        end_sample = int(end_time * sample_rate)
+
+        # Extract the segment
+        segment_waveform = waveform[:, start_sample:end_sample]
+        torchaudio.save("temp.wav", segment_waveform, sample_rate)
         audio_path = "temp.wav"
     else:
         with open("temp.wav", "wb") as f:
