@@ -143,7 +143,7 @@ class SpectrogramCNN(nn.Module):
         x = self.fc2(x)
         return x
 
-genres = ['pop','metal','disco','blues','reggae','classical','rock','hiphop','country','jazz']
+genres = ['blues', 'classical', 'country', 'disco', 'hiphop', 'jazz', 'metal', 'pop', 'reggae', 'rock']
 model = SpectrogramCNN()
 
 model.load_state_dict(torch.load('MGC_Model.pth'))
