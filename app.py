@@ -229,7 +229,9 @@ if audio_file:
         st.markdown(f"**Genre**: {genres[int(top_idxs[2])]}")
         st.markdown(f"**Confidence**: {top_probs[2]:.2f}%")
         st.progress(int(top_probs[2]))
-
+        
+    with open(audio_path, "rb") as audio_file:
+        st.audio(audio_file.read(), format="audio/wav")
 
     # Clean up temporary files
     import os
