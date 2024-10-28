@@ -56,6 +56,10 @@ streamlit run app.py
 └── README.md               # Project documentation
 ```
 
+## Live demo
+https://uynguyenappio-fvfzhtd8ucnrkfunccibwh.streamlit.app/
+![Demo](demo.png)
+
 ## Acknowledgments
 This project was developed as part of a coursework requirement and serves as a practical implementation of machine learning for music classification.
 
