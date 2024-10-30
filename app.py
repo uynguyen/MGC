@@ -203,8 +203,9 @@ if audio_file:
         
         # Get top 3 predictions with probabilities
         top_probs, top_idxs = torch.topk(probabilities, 3)
-        top_probs = top_probs.cpu().numpy() * 100  # Convert to percentage
-        top_idxs = top_idxs.cpu().numpy()
+        top_probs = top_probs.cpu().tolist()  # Convert to list
+        top_probs = [p * 100 for p in top_probs]  # Convert to percentage if needed
+        top_idxs = top_idxs.cpu().tolist()  # Convert indices to list
 
     # Display predictions in columns
     st.subheader("Prediction Results")

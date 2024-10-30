@@ -1,6 +1,7 @@
 Flask
 pydub
 torch
-torchaudio
+torchaudio=2.0.2
 keras
 tensorflow
+numpy
